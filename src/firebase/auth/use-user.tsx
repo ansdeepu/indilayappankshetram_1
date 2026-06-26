@@ -32,7 +32,7 @@ export function useUser(): UserState {
         return;
       }
       
-      const isAdmin = user.email === 'indilayappankshetram@gmail.com';
+      const isAdmin = user.email === 'indilayappankshetram@gmail.com' || user.email === 'ss.deepu@gmail.com';
       const isManager = user.email === 'templemanager@gmail.com';
 
       setUserState({

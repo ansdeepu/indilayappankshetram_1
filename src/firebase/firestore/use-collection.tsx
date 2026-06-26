@@ -40,9 +40,12 @@ export function useCollection<T>(query: Query<T, DocumentData> | null) {
         setError(err?.message || String(err));
         setLoading(false);
         try {
-          handleFirestoreError(err, OperationType.LIST, 'unknown-collection-path');
+          // Attempt to extract path from query if possible, or use 'unknown'
+          const path = (memoizedQuery as any)?._query?.path?.segments?.join('/') || 'unknown-collection';
+          handleFirestoreError(err, OperationType.GET, path);
         } catch (e) {
-          // Error is already logged and re-thrown by handleFirestoreError
+          // Fallback if path extraction fails
+          handleFirestoreError(err, OperationType.GET, 'unknown');
         }
       }
     );

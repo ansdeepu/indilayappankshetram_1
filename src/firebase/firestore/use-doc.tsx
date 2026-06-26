@@ -35,11 +35,7 @@ export function useDoc<T>(ref: DocumentReference<T, DocumentData> | null) {
         console.error("Error in useDoc:", err?.message || String(err));
         setError(err?.message || String(err));
         setLoading(false);
-        try {
-          handleFirestoreError(err, OperationType.GET, ref?.path || 'unknown-doc-path');
-        } catch (e) {
-          // Error is already logged and re-thrown by handleFirestoreError
-        }
+        handleFirestoreError(err, OperationType.GET, ref?.path || 'unknown');
       }
     );
 
