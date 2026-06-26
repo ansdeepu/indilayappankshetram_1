@@ -1,0 +1,7 @@
+{
+  "name": "Indilayappan Temple",
+  "description": "Indilayappan Temple Website",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

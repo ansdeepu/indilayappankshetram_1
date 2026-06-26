@@ -1,0 +1,88 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero1",
+      "description": "A beautiful temple gopuram against a sunset sky.",
+      "imageUrl": "https://images.unsplash.com/photo-1690116049055-e93aa141cbf3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0ZW1wbGUlMjBzdW5zZXR8ZW58MHx8fHwxNzY3MDYyMTg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple sunset"
+    },
+    {
+      "id": "hero2",
+      "description": "Interior of a temple with intricate carvings and light streaming in.",
+      "imageUrl": "https://images.unsplash.com/photo-1764611837011-a6177949658f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0ZW1wbGUlMjBpbnRlcmlvcnxlbnwwfHx8fDE3NjcwMDI1MDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple interior"
+    },
+    {
+      "id": "hero3",
+      "description": "A temple festival with elephants and a crowd of devotees.",
+      "imageUrl": "https://images.unsplash.com/photo-1745739193791-c2d4153f5e9c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx0ZW1wbGUlMjBmZXN0aXZhbHxlbnwwfHx8fDE3NjY5OTg3NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple festival"
+    },
+    {
+      "id": "news1",
+      "description": "Close up of a traditional oil lamp used in rituals.",
+      "imageUrl": "https://images.unsplash.com/photo-1507697364665-69eec30ea71e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxvaWwlMjBsYW1wfGVufDB8fHx8MTc2NzA2NDAyNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "oil lamp"
+    },
+    {
+      "id": "news2",
+      "description": "Devotees celebrating a festival at the temple.",
+      "imageUrl": "https://images.unsplash.com/photo-1728053242216-62edb9631e8a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkZXZvdGVlcyUyMGZlc3RpdmFsfGVufDB8fHx8MTc2NzA2MjE4NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "devotees festival"
+    },
+    {
+      "id": "news3",
+      "description": "Classical dance performance during a temple event.",
+      "imageUrl": "https://images.unsplash.com/photo-1479813183133-f2e9b38ed6c4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjbGFzc2ljYWwlMjBkYW5jZXxlbnwwfHx8fDE3NjcwNDg1MzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "classical dance"
+    },
+    {
+      "id": "gallery1",
+      "description": "Architectural detail of the temple roof.",
+      "imageUrl": "https://images.unsplash.com/photo-1672332157466-127b80372628?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx0ZW1wbGUlMjBhcmNoaXRlY3R1cmV8ZW58MHx8fHwxNzY3MDY0MDI0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple architecture"
+    },
+    {
+      "id": "gallery2",
+      "description": "A priest performing a puja ceremony.",
+      "imageUrl": "https://images.unsplash.com/photo-1670516537518-b656697de360?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwcmllc3QlMjBjZXJlbW9ueXxlbnwwfHx8fDE3NjcwNjQwMjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "priest ceremony"
+    },
+    {
+      "id": "gallery3",
+      "description": "The temple pond surrounded by greenery.",
+      "imageUrl": "https://images.unsplash.com/photo-1677774399201-2e50641272f3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx0ZW1wbGUlMjBwb25kfGVufDB8fHx8MTc2Njk2ODc3N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple pond"
+    },
+    {
+      "id": "gallery4",
+      "description": "Stone carvings on the temple walls.",
+      "imageUrl": "https://images.unsplash.com/photo-1647771280861-8586df0a3b16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdG9uZSUyMGNhcnZpbmdzfGVufDB8fHx8MTc2NzA2NDAyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "stone carvings"
+    },
+    {
+      "id": "gallery5",
+      "description": "A decorated temple elephant during a festival.",
+      "imageUrl": "https://images.unsplash.com/photo-1712987663245-ad6a5288cf04?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx0ZW1wbGUlMjBlbGVwaGFudHxlbnwwfHx8fDE3NjcwNjIxODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple elephant"
+    },
+    {
+      "id": "gallery6",
+      "description": "Evening view of the temple illuminated with lights.",
+      "imageUrl": "https://images.unsplash.com/photo-1668428446023-c87d30a3aac9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx0ZW1wbGUlMjBuaWdodHxlbnwwfHx8fDE3NjcwNjQwMjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple night"
+    },
+    {
+      "id": "gallery7",
+      "description": "Offerings of flowers and fruits.",
+      "imageUrl": "https://images.unsplash.com/photo-1761753087740-6d6639769a38?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxmbG93ZXIlMjBvZmZlcmluZ3N8ZW58MHx8fHwxNzY3MDY0MDI0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "flower offerings"
+    },
+    {
+      "id": "gallery8",
+      "description": "A mural painting from the temple wall.",
+      "imageUrl": "https://images.unsplash.com/photo-1609126793145-d7f30e52149a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtdXJhbCUyMHBhaW50aW5nfGVufDB8fHx8MTc2NzA2NDAyNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mural painting"
+    }
+  ]
+}

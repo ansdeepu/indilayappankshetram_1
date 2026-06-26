@@ -1,0 +1,420 @@
+
+{
+    "entities": {
+        "visitorStats": {
+            "title": "Visitor Statistics",
+            "description": "Statistics for website visitors.",
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "number",
+                    "description": "The total number of visitors."
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The last time the visitor count was updated."
+                }
+            }
+        },
+        "news": {
+            "title": "News Article",
+            "description": "A news article or event announcement.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "titleEn": { "type": "string" },
+                "date": { "type": "string", "format": "date-time" },
+                "summary": { "type": "string" },
+                "summaryEn": { "type": "string" },
+                "imageUrl": { "type": "string", "format": "uri" },
+                "youtubeUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["id", "title", "titleEn", "date", "summary", "summaryEn"]
+        },
+        "content": {
+            "title": "Website Content",
+            "description": "Editable content for various sections of the website.",
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "paragraphs": { "type": "array", "items": { "type": "string" } }
+                    }
+                },
+                "ml": {
+                     "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "paragraphs": { "type": "array", "items": { "type": "string" } }
+                    }
+                }
+            }
+        },
+        "ritual": {
+            "title": "Daily Ritual",
+            "description": "An entry in the daily ritual schedule.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "time": { "type": "string" },
+                "name": { "type": "string" },
+                "nameEn": { "type": "string" }
+            },
+            "required": ["id", "time", "name", "nameEn"]
+        },
+         "ritualsPageContent": {
+            "title": "Rituals Page Content",
+            "description": "The title and subtitle for the rituals page.",
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                },
+                "ml": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                }
+            },
+            "required": ["en", "ml"]
+        },
+        "vazhipaduPageContent": {
+            "title": "Vazhipadu Page Content",
+            "description": "The title and subtitle for the offerings/vazhipadu page.",
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                },
+                "ml": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                }
+            },
+            "required": ["en", "ml"]
+        },
+        "offering": {
+            "title": "Offering (Vazhipadu)",
+            "description": "An offering available for online booking.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "nameEn": { "type": "string" },
+                "price": { "type": "number" },
+                "slNo": { "type": "number"}
+            },
+            "required": ["id", "name", "nameEn", "price"]
+        },
+        "heroSlide": {
+            "title": "Hero Section Slide",
+            "description": "A single slide in the homepage hero carousel.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "imageUrl": { "type": "string", "format": "uri" },
+                "descriptionEn": { "type": "string" },
+                "descriptionMl": { "type": "string" },
+                "order": { "type": "number" }
+            },
+            "required": ["id", "imageUrl", "order"]
+        },
+        "heroContent": {
+            "title": "Hero Section Content",
+            "description": "The main heading for the hero section.",
+            "type": "object",
+            "properties": {
+                "titleEn": { "type": "string" },
+                "titleMl": { "type": "string" },
+                "descriptionEn": { "type": "string" },
+                "descriptionMl": { "type": "string" }
+            },
+            "required": ["titleEn", "titleMl", "descriptionEn", "descriptionMl"]
+        },
+        "galleryItem": {
+            "title": "Gallery Item",
+            "description": "An image or video in the gallery.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string", "enum": ["image", "video"] },
+                "url": { "type": "string", "format": "uri" },
+                "descriptionEn": { "type": "string" },
+                "descriptionMl": { "type": "string" },
+                "order": { "type": "number" },
+                "year": { "type": "number" }
+            },
+            "required": ["id", "type", "url", "order"]
+        },
+        "galleryPageContent": {
+            "title": "Gallery Content",
+            "description": "The title and subtitle for the gallery page.",
+            "type": "object",
+            "properties": {
+                 "en": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                },
+                "ml": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" }
+                    }
+                }
+            },
+            "required": ["en", "ml"]
+        },
+        "offeringBooking": {
+            "title": "Offering Booking",
+            "description": "A record of an online offering booking made by a user.",
+            "type": "object",
+            "properties": {
+                "offeringId": { "type": "string" },
+                "offeringNameEn": { "type": "string" },
+                "offeringNameMl": { "type": "string" },
+                "price": { "type": "number" },
+                "userName": { "type": "string" },
+                "userEmail": { "type": "string", "format": "email" },
+                "bookingDate": { "type": "string", "format": "date-time" },
+                "submissionDate": { "type": "string", "format": "date-time" },
+                "star": { "type": "string" },
+                "phone": { "type": "string" },
+                "address": { "type": "string" },
+                "language": { "type": "string", "enum": ["en", "ml"]},
+                "paymentStatus": { "type": "string", "enum": ["Paid", "Pending"]},
+                "paymentDate": { "type": "string", "format": "date-time"},
+                "receiptNo": { "type": "string" },
+                "remarks": { "type": "string"},
+                "receiptSentAt": { "type": "string", "format": "date-time"}
+            },
+            "required": ["offeringId", "price", "userName", "userEmail", "bookingDate", "submissionDate", "star"]
+        },
+        "donation": {
+            "title": "Donation",
+            "description": "A record of a donation made by a user.",
+            "type": "object",
+            "properties": {
+                "amount": { "type": "number" },
+                "userName": { "type": "string" },
+                "userEmail": { "type": "string", "format": "email" },
+                "donationDate": { "type": "string", "format": "date-time" },
+                "phone": { "type": "string" },
+                "address": { "type": "string" },
+                "purpose": { "type": "string" },
+                "language": { "type": "string", "enum": ["en", "ml"]},
+                "paymentStatus": { "type": "string", "enum": ["Paid", "Pending"]},
+                "paymentDate": { "type": "string", "format": "date-time"},
+                "receiptNo": { "type": "string" },
+                "remarks": { "type": "string"},
+                "receiptSentAt": { "type": "string", "format": "date-time"}
+            },
+            "required": ["amount", "userName", "userEmail", "donationDate"]
+        },
+        "paymentDetails": {
+            "title": "Payment Details",
+            "description": "Bank and UPI details for receiving payments.",
+            "type": "object",
+            "properties": {
+                "upiId": { "type": "string" },
+                "qrCodeUrl": { "type": "string", "format": "uri" },
+                "accountName": { "type": "string" },
+                "accountNumber": { "type": "string" },
+                "ifscCode": { "type": "string" },
+                "bankName": { "type": "string" },
+                "receiptImageUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["upiId"]
+        },
+        "templeDetails": {
+            "title": "Temple Details",
+            "description": "Contact and address information for the temple.",
+            "type": "object",
+            "properties": {
+                "nameEn": { "type": "string" },
+                "nameMl": { "type": "string" },
+                "addressEn": { "type": "string" },
+                "addressMl": { "type": "string" },
+                "phone1": { "type": "string" },
+                "phone2": { "type": "string" },
+                "email": { "type": "string", "format": "email" },
+                "whatsappUrl": { "type": "string", "format": "uri" },
+                "youtubeUrl": { "type": "string", "format": "uri" },
+                "facebookUrl": { "type": "string", "format": "uri" },
+                "instagramUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["nameEn", "nameMl", "addressEn", "addressMl"]
+        },
+        "adminMember": {
+            "title": "Administrative Member",
+            "description": "Details for a temple administrative member.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "address": { "type": "string" },
+                "phone": { "type": "string" }
+            },
+            "required": ["id", "name"]
+        },
+        "expenditure": {
+            "title": "Expenditure",
+            "description": "A record of an expenditure made by the temple.",
+            "type": "object",
+            "properties": {
+                "categoryEn": { "type": "string" },
+                "categoryMl": { "type": "string" },
+                "subCategoryEn": { "type": "string" },
+                "subCategoryMl": { "type": "string" },
+                "amount": { "type": "number" },
+                "date": { "type": "string" },
+                "descriptionEn": { "type": "string" },
+                "descriptionMl": { "type": "string" },
+                "paymentMethod": { "type": "string" },
+                "voucherNo": { "type": "string" },
+                "createdByUser": { "type": "string" },
+                "createdAt": { "type": "string", "format": "date-time" }
+            },
+            "required": ["categoryEn", "subCategoryEn", "amount", "date", "descriptionEn", "paymentMethod"]
+        },
+        "asset": {
+            "title": "Temple Asset",
+            "description": "A record of a temple property or donated asset.",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "nameEn": { "type": "string" },
+                "nameMl": { "type": "string" },
+                "descriptionEn": { "type": "string" },
+                "descriptionMl": { "type": "string" },
+                "value": { "type": "number" },
+                "donatedByEn": { "type": "string" },
+                "donatedByMl": { "type": "string" },
+                "donationDate": { "type": "string" },
+                "quantity": { "type": "string" },
+                "categoryEn": { "type": "string" },
+                "categoryMl": { "type": "string" },
+                "imageUrl": { "type": "string" },
+                "isDonated": { "type": "boolean" }
+            },
+            "required": ["nameEn", "nameMl", "descriptionEn", "descriptionMl", "quantity", "categoryEn", "categoryMl", "isDonated"]
+        }
+    },
+    "auth": {
+        "providers": ["google"]
+    },
+    "firestore": {
+        "/site-stats/{statId}": {
+            "schema": {
+                "$ref": "#/backend/entities/visitorStats"
+            },
+            "description": "Collection to hold site statistics like visitor counts."
+        },
+        "/news/{newsId}": {
+            "schema": {
+                "$ref": "#/backend/entities/news"
+            },
+            "description": "Collection for news articles and events."
+        },
+        "/content/history": {
+            "schema": {
+                "$ref": "#/backend/entities/content"
+            },
+            "description": "Singleton document for storing the homepage history content."
+        },
+         "/content/ritualsPage": {
+            "schema": { "$ref": "#/backend/entities/ritualsPageContent" },
+            "description": "Singleton document for the rituals page heading content."
+        },
+        "/content/vazhipaduPage": {
+            "schema": { "$ref": "#/backend/entities/vazhipaduPageContent" },
+            "description": "Singleton document for the vazhipadu/offerings page heading content."
+        },
+        "/content/galleryPage": {
+            "schema": { "$ref": "#/backend/entities/galleryPageContent" },
+            "description": "Singleton document for the gallery page heading content."
+        },
+         "/content/paymentDetails": {
+            "schema": { "$ref": "#/backend/entities/paymentDetails" },
+            "description": "Singleton document for the site-wide payment details."
+        },
+        "/dailyRituals/{ritualId}": {
+            "schema": {
+                "$ref": "#/backend/entities/ritual"
+            },
+            "description": "Schedule of daily poojas and rituals."
+        },
+        "/offerings/{offeringId}": {
+            "schema": {
+                "$ref": "#/backend/entities/offering"
+            },
+            "description": "List of available offerings (vazhipadu)."
+        },
+        "/heroSlides/{slideId}": {
+            "schema": {
+                "$ref": "#/backend/entities/heroSlide"
+            },
+            "description": "Content for the homepage hero carousel slides."
+        },
+        "/heroContent/main": {
+            "schema": { "$ref": "#/backend/entities/heroContent" },
+            "description": "Singleton document for the main hero section content."
+        },
+        "/gallery/{itemId}": {
+            "schema": {
+                "$ref": "#/backend/entities/galleryItem"
+            },
+            "description": "List of images and videos to be displayed in the photo gallery."
+        },
+        "/offeringBookings/{bookingId}": {
+            "schema": {
+                "$ref": "#/backend/entities/offeringBooking"
+            },
+            "description": "Collection for storing online offering bookings."
+        },
+        "/donations/{donationId}": {
+            "schema": {
+                "$ref": "#/backend/entities/donation"
+            },
+            "description": "Collection for storing online donations."
+        },
+        "/siteSettings/templeDetails": {
+            "schema": { "$ref": "#/backend/entities/templeDetails" },
+            "description": "Singleton document for general temple contact information."
+        },
+        "/adminMembers/{memberId}": {
+            "schema": { "$ref": "#/backend/entities/adminMember" },
+            "description": "Collection of administrative members."
+        },
+        "/expenditures/{expId}": {
+            "schema": { "$ref": "#/backend/entities/expenditure" },
+            "description": "Collection of temple expenditures."
+        },
+        "/assets/{assetId}": {
+            "schema": { "$ref": "#/backend/entities/asset" },
+            "description": "Collection of temple properties and donated assets."
+        }
+    }
+}
