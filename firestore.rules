@@ -8,106 +8,124 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'indilayappankshetram@gmail.com';
+    }
+
+    function isManager() {
+      return isSignedIn() && request.auth.token.email == 'templemanager@gmail.com';
+    }
+
+    function canManage() {
+      return isAdmin() || isManager();
+    }
+
     // Allow public read and write access to the visitor counter
     match /site-stats/visitor_count {
-      allow read: if true;
-      allow write: if true; // Changed from update to write to allow creation
+      allow read, write: if true;
     }
     
     // Allow public read for news, but only authenticated can write
     match /news/{newsId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow public read for general content, but only authenticated can write
     match /content/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow public read for rituals, but only authenticated can write
     match /dailyRituals/{ritualId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow public read for offerings, but only authenticated can write
     match /offerings/{offeringId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow public read for hero slides, but only authenticated can write
     match /heroSlides/{slideId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow public read for hero content, but only authenticated can write
     match /heroContent/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
     
     // Allow public read for gallery, but only authenticated can write
     match /gallery/{imageId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Rules for offering bookings
     match /offeringBookings/{bookingId} {
       allow create: if true;
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (canManage() || resource.data.userEmail == request.auth.token.email);
+      allow update, delete: if canManage();
       
       // Allow writes to any subcollections
       match /{subCollection=**} {
-        allow create: if true;
-        allow read, write: if isSignedIn();
+        allow read, write: if canManage();
       }
     }
 
     // Rules for donations
     match /donations/{donationId} {
       allow create: if true;
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (canManage() || resource.data.userEmail == request.auth.token.email);
+      allow update, delete: if canManage();
 
       // Allow writes to any subcollections
       match /{subCollection=**} {
-        allow create: if true;
-        allow read, write: if isSignedIn();
+        allow read, write: if canManage();
       }
     }
 
 
     // Rules for sending emails via the Trigger Email extension
     match /mail/{mailId} {
-      allow create: if isSignedIn(); // Only admins can trigger emails
+      allow create: if isSignedIn(); 
       allow read, update, delete: if false;
     }
 
     // Allow public read for site settings, authenticated can write.
     match /siteSettings/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Allow authenticated read/write for admin members.
     match /adminMembers/{memberId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    // Allow public read for expenditures, but only authenticated can write
+    // Allow authenticated read for expenditures, but only authenticated can write
     match /expenditures/{expId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if canManage();
+    }
+
+    // Allow authenticated read for income, but only authenticated can write
+    match /income/{incomeId} {
+      allow read: if isSignedIn();
+      allow write: if canManage();
     }
 
     // Rules for temple assets
     match /assets/{assetId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if canManage();
     }
 
     // By default, deny all other reads and writes

@@ -7,7 +7,6 @@ import {
   Query,
   DocumentData,
 } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from './error-handler';
 
 export function useCollection<T>(query: Query<T, DocumentData> | null) {
   const [data, setData] = useState<(T & { id: string })[] | null>(null);
@@ -36,17 +35,21 @@ export function useCollection<T>(query: Query<T, DocumentData> | null) {
         setLoading(false);
       },
       (err) => {
-        console.error("Error in useCollection:", err?.message || String(err));
+        // Detailed error reporting for debugging permission issues
+        let queryInfo = 'Unknown Query';
+        try {
+          // Attempt to extract collection/path information from the internal query object
+          const internalQuery = (memoizedQuery as any)?._query;
+          if (internalQuery && internalQuery.path) {
+            queryInfo = internalQuery.path.segments.join('/');
+          }
+        } catch (e) {
+          queryInfo = 'Could not determine path';
+        }
+
+        console.error(`Error in useCollection [${queryInfo}]:`, err?.message || String(err));
         setError(err?.message || String(err));
         setLoading(false);
-        try {
-          // Attempt to extract path from query if possible, or use 'unknown'
-          const path = (memoizedQuery as any)?._query?.path?.segments?.join('/') || 'unknown-collection';
-          handleFirestoreError(err, OperationType.GET, path);
-        } catch (e) {
-          // Fallback if path extraction fails
-          handleFirestoreError(err, OperationType.GET, 'unknown');
-        }
       }
     );
 

@@ -2,11 +2,10 @@
 
 // Get this from the Firebase console.
 export const firebaseConfig = {
-  apiKey: "AIzaSyCyZ8MA7kqpucAYayM0TWKmpQdv1trbDmA",
-  authDomain: "industrious-lyceum-2p7vm.firebaseapp.com",
-  projectId: "industrious-lyceum-2p7vm",
-  storageBucket: "industrious-lyceum-2p7vm.firebasestorage.app",
-  messagingSenderId: "533578075028",
-  appId: "1:533578075028:web:decc46e025f95f9861dd81",
-  firestoreDatabaseId: "ai-studio-indilayappantemp-0e97c30b-b128-46e6-9f46-48aa60e14565"
+  apiKey: "AIzaSyBE1gFXA2b3GW3fYMI3beOxJ2CXuYT_xvY",
+  authDomain: "indilayappan-temple.firebaseapp.com",
+  projectId: "indilayappan-temple",
+  storageBucket: "indilayappan-temple.firebasestorage.app",
+  messagingSenderId: "405658738204",
+  appId: "1:405658738204:web:2c6291a26b8be26641c9d9"
 };

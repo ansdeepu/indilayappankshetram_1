@@ -142,7 +142,7 @@ function BookingsPageContent() {
   const firestore = useFirestore();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const { user, isManager } = useUser();
+  const { user, isManager, isAdmin } = useUser();
   const { refreshData, refreshToggle } = useBookingDonationContext();
   
   const [bookingsCount, setBookingsCount] = useState<number | null>(null);
@@ -164,7 +164,7 @@ function BookingsPageContent() {
   const [isGmailConfirmOpen, setGmailConfirmOpen] = useState(false);
   
   const fetchCounts = useCallback(async () => {
-    if (!firestore || !user) return;
+    if (!firestore || !user || (!isAdmin && !isManager)) return;
 
     try {
         const bookingsColl = collection(firestore, 'offeringBookings');
@@ -573,9 +573,9 @@ function BookingsTable({ onEditClick, onDeleteClick, onEmailClick }: BookingsTab
     const [currentPage, setCurrentPage] = useState(0);
 
     const baseQuery = useMemo(() => {
-        if (!user) return null;
+        if (!user || (!isAdmin && !isManager)) return null;
         return query(collection(firestore!, 'offeringBookings'), orderBy('submissionDate', 'desc'));
-    }, [firestore, user]);
+    }, [firestore, user, isAdmin, isManager]);
 
     const { data: bookings, loading, pageCount } = usePaginatedCollection<OfferingBooking>(baseQuery, currentPage, refreshToggle.bookings, isManager);
 
@@ -672,9 +672,9 @@ function DonationsTable({ onEditClick, onDeleteClick, onEmailClick }: DonationsT
     const [currentPage, setCurrentPage] = useState(0);
 
     const baseQuery = useMemo(() => {
-        if (!user) return null;
+        if (!user || (!isAdmin && !isManager)) return null;
         return query(collection(firestore!, 'donations'), orderBy('donationDate', 'desc'));
-    }, [firestore, user]);
+    }, [firestore, user, isAdmin, isManager]);
 
     const { data: donations, loading, pageCount } = usePaginatedCollection<Donation>(baseQuery, currentPage, refreshToggle.donations, isManager);
 

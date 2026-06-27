@@ -175,6 +175,23 @@ export type AdminMember = {
     phone: string;
 }
 
+export type Income = {
+  id: string;
+  categoryEn: string;
+  categoryMl: string;
+  subCategoryEn: string;
+  subCategoryMl: string;
+  amount: number;
+  date: string;
+  descriptionEn: string;
+  descriptionMl: string;
+  paymentMethod: string;
+  receivedFrom: string;
+  receiptNo?: string;
+  createdByUser?: string;
+  createdAt?: string;
+};
+
 export type Expenditure = {
   id: string;
   categoryEn: string;

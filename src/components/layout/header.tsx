@@ -59,6 +59,7 @@ export function SiteHeader() {
     
     if (user) {
       if (isAdmin) {
+        // Admin can see all pages, including report and category
         return [
           { href: "/", labelEn: "Home", labelMl: "ഹോം" },
           { href: "/rituals", labelEn: "Rituals", labelMl: "ആചാരങ്ങൾ" },
@@ -73,16 +74,18 @@ export function SiteHeader() {
           { href: "/gallery", labelEn: "Gallery", labelMl: "ഗാലറി" },
         ];
       } else {
+        // All users except admin can see Home, Income, Expenditure, and Report pages
         return [
           { href: "/", labelEn: "Home", labelMl: "ഹോം" },
           { href: "/assets", labelEn: "Assets", labelMl: "ആസ്തികൾ" },
           { href: "/income", labelEn: "Income", labelMl: "വരവ്" },
-          { href: "/expenditure", labelEn: "Expenditure", labelMl: "ചലവ്" },
+          { href: "/expenditure", labelEn: "Expenditure", labelMl: "ചെലവ്" },
           { href: "/report", labelEn: "Report", labelMl: "റിപ്പോർട്ട്" },
         ];
       }
     }
     
+    // Public view: hide Categories, Income, Expenditure, and Report, but show Online Seva
     return [
       { href: "/", labelEn: "Home", labelMl: "ഹോം" },
       { href: "/rituals", labelEn: "Rituals", labelMl: "ആചാരങ്ങൾ" },
@@ -116,31 +119,27 @@ export function SiteHeader() {
   
   if (!isClient) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-primary text-primary-foreground">
-        <div className="container flex h-16 items-center">
-           <div className="flex items-center space-x-2">
-            <TempleIcon className="h-8 w-8 text-accent" />
-            <span className="font-headline text-lg font-bold tracking-wide">{siteTitle}</span>
-          </div>
-        </div>
-      </header>
+       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-primary/95 text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/80">
+         <div className="container flex h-16 items-center">
+             {/* Render a simplified or empty header on the server */}
+         </div>
+       </header>
     );
   }
   
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-primary text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/90">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-primary text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/95 shadow-md">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <TempleIcon className="h-8 w-8 text-accent" />
+          <TempleIcon className="h-10 w-10 text-accent" />
           <div className="flex flex-col">
-            <span className="font-headline text-lg font-bold tracking-wide">
+            <span className="font-headline text-xl font-bold tracking-wide">
               {siteTitle}
             </span>
           </div>
         </Link>
-
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex gap-1 border-r border-primary-foreground/20 pr-4">
+          <div className="hidden sm:flex gap-1 border-r border-primary-foreground/20 pr-4 mr-2">
             <Button
               size="sm"
               variant={language === 'en' ? 'secondary' : 'ghost'}
@@ -158,73 +157,69 @@ export function SiteHeader() {
               മലയാളം
             </Button>
           </div>
-
-          {!loading && (
-            <div className="hidden md:block">
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm" className="flex items-center gap-2 h-8">
-                      <User className="h-4 w-4" />
-                      <span className="text-xs font-medium">
+           {!loading && (
+             <div>
+               {user ? (
+                  <DropdownMenu>
+                   <DropdownMenuTrigger asChild>
+                     <Button variant="secondary" size="sm" className="flex items-center gap-2 h-9">
+                       <User className="h-4 w-4" />
+                       <span className="hidden xs:inline">
                         {isAdmin ? "Admin" : isManager ? "Manager" : "Devotee"}
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {isAdmin && (
-                      <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Content Management</div>
-                        {adminContentLinks.map(link => (
-                          <DropdownMenuItem key={link.href} asChild>
-                            <Link href={link.href}>{link.label}</Link>
+                       </span>
+                     </Button>
+                   </DropdownMenuTrigger>
+                   <DropdownMenuContent align="end">
+                      {isAdmin && (
+                        <>
+                          {adminContentLinks.map(link => (
+                            <DropdownMenuItem key={link.href} asChild>
+                              <Link href={link.href}>{link.label}</Link>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          {adminSettingsLinks.map(link => (
+                             <DropdownMenuItem key={link.href} asChild>
+                                 <Link href={link.href}>{link.label}</Link>
+                             </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                              <Link href={adminBookingsLink.href}>{adminBookingsLink.label}</Link>
                           </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">System Settings</div>
-                        {adminSettingsLinks.map(link => (
-                          <DropdownMenuItem key={link.href} asChild>
-                            <Link href={link.href}>{link.label}</Link>
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href={adminBookingsLink.href}>{adminBookingsLink.label}</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    {(isManager && !isAdmin) && (
-                      <>
-                        {managerLinks.map(link => (
-                          <DropdownMenuItem key={link.href} asChild>
-                            <Link href={link.href}>{link.label}</Link>
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sign Out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <LoginDialog isOpen={isLoginOpen} onOpenChange={setIsLoginOpen}>
-                  <Button variant="secondary" size="sm" onClick={() => setIsLoginOpen(true)} className="h-8">
-                    <User className="mr-2 h-4 w-4" /> Login
-                  </Button>
-                </LoginDialog>
-              )}
-            </div>
-          )}
-
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {isManager && (
+                        <>
+                          {managerLinks.map(link => (
+                            <DropdownMenuItem key={link.href} asChild>
+                              <Link href={link.href}>{link.label}</Link>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Sign Out</span>
+                      </DropdownMenuItem>
+                   </DropdownMenuContent>
+                 </DropdownMenu>
+               ) : (
+                 <LoginDialog isOpen={isLoginOpen} onOpenChange={setIsLoginOpen}>
+                    <Button variant="secondary" size="sm" onClick={() => setIsLoginOpen(true)} className="h-9">
+                      <User className="mr-2 h-4 w-4" /> Login
+                   </Button>
+                 </LoginDialog>
+               )}
+             </div>
+           )}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button
@@ -239,18 +234,18 @@ export function SiteHeader() {
               <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               <SheetDescription className="sr-only">Indilayappan Temple Navigation Menu</SheetDescription>
               <div className="flex items-center justify-between mb-4 pr-10">
-                <Link
-                  href="/"
-                  className="flex items-center space-x-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsOpen(false);
-                    router.push("/");
-                  }}
-                >
+                 <Link
+                   href="/"
+                   className="flex items-center space-x-2"
+                   onClick={(e) => {
+                     e.preventDefault();
+                     setIsOpen(false);
+                     router.push("/");
+                   }}
+                 >
                   <TempleIcon className="h-8 w-8 text-accent" />
                   <span className="font-headline font-bold">{siteTitle}</span>
-                </Link>
+                 </Link>
               </div>
               <div className="my-4 h-[1px] bg-accent/30" />
               <nav className="flex flex-col gap-6 pr-6">
@@ -275,57 +270,57 @@ export function SiteHeader() {
                   )
                 })}
               </nav>
-              <div className="my-4 h-[1px] bg-accent/30" />
-              <div className="flex gap-4 pr-6">
-                <Button
-                  size="sm"
-                  variant={language === 'en' ? 'secondary' : 'ghost'}
-                  onClick={() => { handleLanguageChange('en'); setIsOpen(false); }}
-                  className={cn('w-full', language === 'en' ? 'text-secondary-foreground' : 'text-primary-foreground/80 hover:text-primary-foreground border border-primary-foreground/20')}
-                >
-                  English
-                </Button>
-                <Button
-                  size="sm"
-                  variant={language === 'ml' ? 'secondary' : 'ghost'}
-                  onClick={() => { handleLanguageChange('ml'); setIsOpen(false); }}
-                  className={cn('w-full', language === 'ml' ? 'text-secondary-foreground' : 'text-primary-foreground/80 hover:text-primary-foreground border border-primary-foreground/20')}
-                >
-                  മലയാളം
-                </Button>
-              </div>
-              <div className="my-4 h-[1px] bg-accent/30" />
-              <div className="pr-6">
-                {!loading && (
-                  <div className="flex flex-col gap-2">
-                    {user ? (
-                      <>
-                        <Button variant="outline" className="w-full text-left justify-start" onClick={() => { setIsProfileOpen(true); setIsOpen(false); }}>
-                          <User className="mr-2 h-4 w-4" /> My Profile
-                        </Button>
-                        <Button variant="secondary" className="w-full" onClick={handleLogout}>
-                          <LogOut className="mr-2 h-4 w-4" /> Sign Out
-                        </Button>
-                      </>
-                    ) : (
-                      <LoginDialog isOpen={isLoginOpen} onOpenChange={setIsLoginOpen}>
-                        <Button variant="secondary" className="w-full" onClick={() => { setIsLoginOpen(true); setIsOpen(false); }}>
-                          <User className="mr-2 h-4 w-4" /> Login
-                        </Button>
-                      </LoginDialog>
+               <div className="my-4 h-[1px] bg-accent/30" />
+                 <div className="flex gap-4 pr-6">
+                  <Button
+                    size="sm"
+                    variant={language === 'en' ? 'secondary' : 'ghost'}
+                    onClick={() => { handleLanguageChange('en'); setIsOpen(false); }}
+                     className={cn('w-full', language === 'en' ? 'text-secondary-foreground' : 'text-primary-foreground/80 hover:text-primary-foreground border border-primary-foreground/20')}
+                  >
+                    English
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={language === 'ml' ? 'secondary' : 'ghost'}
+                    onClick={() => { handleLanguageChange('ml'); setIsOpen(false); }}
+                     className={cn('w-full', language === 'ml' ? 'text-secondary-foreground' : 'text-primary-foreground/80 hover:text-primary-foreground border border-primary-foreground/20')}
+                  >
+                    മലയാളം
+                  </Button>
+                </div>
+                 <div className="my-4 h-[1px] bg-accent/30" />
+                 <div className="pr-6">
+                    {!loading && (
+                      <div className="flex flex-col gap-2">
+                        {user ? (
+                           <>
+                             <Button variant="outline" className="w-full text-left justify-start" onClick={() => { setIsProfileOpen(true); setIsOpen(false); }}>
+                               <User className="mr-2 h-4 w-4" /> My Profile
+                             </Button>
+                             <Button variant="secondary" className="w-full" onClick={handleLogout}>
+                               <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                             </Button>
+                           </>
+                        ) : (
+                           <LoginDialog isOpen={isLoginOpen} onOpenChange={setIsLoginOpen}>
+                             <Button variant="secondary" className="w-full" onClick={() => { setIsLoginOpen(true); setIsOpen(false); }}>
+                                <User className="mr-2 h-4 w-4" /> Login
+                             </Button>
+                           </LoginDialog>
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-              </div>
+                 </div>
             </SheetContent>
           </Sheet>
         </div>
       </div>
       
-      {/* Secondary Navigation Row for Desktop */}
-      <div className="hidden md:block border-t border-primary-foreground/10 bg-primary-foreground/5 py-2">
+      {/* Navigation on the next row */}
+      <div className="hidden md:block bg-black/10 border-t border-primary-foreground/10">
         <div className="container">
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <nav className="flex items-center gap-1 py-1.5">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -333,8 +328,10 @@ export function SiteHeader() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-accent",
-                    isActive ? "text-accent font-bold" : "text-primary-foreground/90",
+                    "px-4 py-2 text-sm font-medium transition-all rounded-md",
+                    isActive 
+                      ? "bg-accent text-accent-foreground shadow-sm font-bold" 
+                      : "text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground",
                     language === 'ml' && 'text-xs'
                   )}
                 >

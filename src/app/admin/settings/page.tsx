@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useDoc, useCollection } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
@@ -39,14 +39,21 @@ export default function SettingsPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
+
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push('/admin/login');
+    }
+  }, [user, userLoading, router]);
 
   // Temple Details state and Firestore hooks
-  const templeDetailsRef = useMemo(() => firestore ? doc(firestore, 'siteSettings', 'templeDetails') : null, [firestore]);
+  const templeDetailsRef = useMemo(() => (firestore && (isAdmin || isManager)) ? doc(firestore, 'siteSettings', 'templeDetails') : null, [firestore, isAdmin, isManager]);
   const { data: templeDetails, loading: detailsLoading } = useDoc<TempleDetails>(templeDetailsRef);
   const [localDetails, setLocalDetails] = useState<TempleDetails>(defaultTempleDetails);
 
   // Admin Members state and Firestore hooks
-  const membersCollectionRef = useMemo(() => firestore ? collection(firestore, 'adminMembers') : null, [firestore]);
+  const membersCollectionRef = useMemo(() => (firestore && (isAdmin || isManager)) ? collection(firestore, 'adminMembers') : null, [firestore, isAdmin, isManager]);
   const { data: adminMembers, loading: membersLoading } = useCollection<AdminMember>(membersCollectionRef);
   const [localMembers, setLocalMembers] = useState<AdminMember[]>([]);
 
@@ -137,7 +144,10 @@ export default function SettingsPage() {
     }
   };
 
-  const isLoading = detailsLoading || membersLoading;
+  const isLoading = detailsLoading || membersLoading || userLoading;
+
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <div className="container mx-auto p-4">

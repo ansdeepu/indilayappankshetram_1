@@ -11,17 +11,18 @@ let firestore: Firestore;
 
 // This function ensures that we initialize the app only once.
 export function initializeFirebase() {
+  const dbId = (firebaseConfig as any).firestoreDatabaseId;
   if (getApps().length > 0) {
     firebaseApp = getApp();
     auth = getAuth(firebaseApp);
-    firestore = getFirestore(firebaseApp, (firebaseConfig as any).firestoreDatabaseId);
+    firestore = dbId ? getFirestore(firebaseApp, dbId) : getFirestore(firebaseApp);
   } else {
     firebaseApp = initializeApp(firebaseConfig);
     auth = getAuth(firebaseApp);
     // Use initializeFirestore only on the first initialization
     firestore = initializeFirestore(firebaseApp, {
       localCache: memoryLocalCache(),
-    }, (firebaseConfig as any).firestoreDatabaseId);
+    }, dbId);
   }
 
   return { firebaseApp, auth, firestore };

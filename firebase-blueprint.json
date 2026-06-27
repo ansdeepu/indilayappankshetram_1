@@ -298,32 +298,10 @@
                 "createdAt": { "type": "string", "format": "date-time" }
             },
             "required": ["categoryEn", "subCategoryEn", "amount", "date", "descriptionEn", "paymentMethod"]
-        },
-        "asset": {
-            "title": "Temple Asset",
-            "description": "A record of a temple property or donated asset.",
-            "type": "object",
-            "properties": {
-                "id": { "type": "string" },
-                "nameEn": { "type": "string" },
-                "nameMl": { "type": "string" },
-                "descriptionEn": { "type": "string" },
-                "descriptionMl": { "type": "string" },
-                "value": { "type": "number" },
-                "donatedByEn": { "type": "string" },
-                "donatedByMl": { "type": "string" },
-                "donationDate": { "type": "string" },
-                "quantity": { "type": "string" },
-                "categoryEn": { "type": "string" },
-                "categoryMl": { "type": "string" },
-                "imageUrl": { "type": "string" },
-                "isDonated": { "type": "boolean" }
-            },
-            "required": ["nameEn", "nameMl", "descriptionEn", "descriptionMl", "quantity", "categoryEn", "categoryMl", "isDonated"]
         }
     },
     "auth": {
-        "providers": ["google"]
+        "providers": ["email-password"]
     },
     "firestore": {
         "/site-stats/{statId}": {
@@ -411,10 +389,6 @@
         "/expenditures/{expId}": {
             "schema": { "$ref": "#/backend/entities/expenditure" },
             "description": "Collection of temple expenditures."
-        },
-        "/assets/{assetId}": {
-            "schema": { "$ref": "#/backend/entities/asset" },
-            "description": "Collection of temple properties and donated assets."
         }
     }
 }

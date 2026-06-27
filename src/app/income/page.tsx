@@ -42,9 +42,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useUser } from '@/firebase';
-import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, addDoc, where } from 'firebase/firestore';
-import type { Offering, OfferingBooking, Donation } from '@/lib/types';
+import { useState, useMemo } from 'react';
+import { collection, query, orderBy, addDoc, where, deleteDoc, doc } from 'firebase/firestore';
+import type { Offering, OfferingBooking, Donation, Income } from '@/lib/types';
 import { stars } from '@/lib/nakshatra';
 import { useCollection } from '@/firebase';
 import { PaymentDialog } from '@/components/payment/payment-dialog';
@@ -53,14 +53,10 @@ import { useRouter } from 'next/navigation';
 import { SiteHeader } from '@/components/layout/header';
 import { SiteFooter } from '@/components/layout/footer';
 import { LoginDialog } from '@/components/auth/login-dialog';
-import { ShieldAlert, Loader2, Calendar, Clock, Heart, PlusCircle, List } from 'lucide-react';
+import { ShieldAlert, Loader2, Calendar, Clock, Heart, PlusCircle, List, TrendingUp, Trash2, Flame } from 'lucide-react';
 import { motion } from 'motion/react';
 import { format, addDays } from 'date-fns';
-import { 
-  INCOME_CATEGORIES, 
-  type FinanceCategory, 
-  type SubCategory 
-} from '@/lib/finance-data';
+import { INCOME_CATEGORIES } from '@/lib/finance-categories';
 
 export default function IncomePage() {
   const { toast } = useToast();
@@ -68,7 +64,7 @@ export default function IncomePage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { user, loading: authLoading, isAdmin, isManager } = useUser();
-  const canViewAll = isAdmin || isManager;
+  const canManage = isAdmin || isManager;
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isConfirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
@@ -77,377 +73,361 @@ export default function IncomePage() {
   const [paymentType, setPaymentType] = useState<'booking' | 'donation'>('booking');
   const [activeRecord, setActiveRecord] = useState<OfferingBooking | Donation | null>(null);
 
+  // Queries
   const offeringsQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'offerings'), orderBy('price'));
   }, [firestore]);
 
-  const { data: offeringsList, loading } = useCollection<Offering>(offeringsQuery);
+  const { data: offeringsList, loading: offeringsLoading } = useCollection<Offering>(offeringsQuery);
 
   const bookingsQuery = useMemo(() => {
     if (!firestore || !user) return null;
-    if (canViewAll) {
+    if (canManage) {
       return query(collection(firestore, 'offeringBookings'), orderBy('bookingDate', 'asc'));
     }
     return query(collection(firestore, 'offeringBookings'), where('userEmail', '==', user.email), orderBy('bookingDate', 'asc'));
-  }, [firestore, user, canViewAll]);
+  }, [firestore, user, canManage]);
 
   const donationsQuery = useMemo(() => {
     if (!firestore || !user) return null;
-    if (canViewAll) {
+    if (canManage) {
       return query(collection(firestore, 'donations'), orderBy('donationDate', 'desc'));
     }
     return query(collection(firestore, 'donations'), where('userEmail', '==', user.email), orderBy('donationDate', 'desc'));
-  }, [firestore, user, canViewAll]);
+  }, [firestore, user, canManage]);
+
+  const directIncomeQuery = useMemo(() => {
+    if (!firestore || !user || !canManage) return null;
+    return query(collection(firestore, 'income'), orderBy('date', 'desc'));
+  }, [firestore, user, canManage]);
 
   const { data: allBookings, loading: bookingsLoading } = useCollection<OfferingBooking>(bookingsQuery);
   const { data: allDonations, loading: donationsLoading } = useCollection<Donation>(donationsQuery);
+  const { data: allDirectIncome, loading: directIncomeLoading } = useCollection<Income>(directIncomeQuery);
 
-  const { todayBookings } = useMemo(() => {
-    if (!allBookings) return { todayBookings: [] };
-    
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const todayStr = format(now, 'yyyy-MM-dd');
-    
-    return {
-      todayBookings: allBookings.filter(b => {
-        const bDate = new Date(b.bookingDate);
-        return format(bDate, 'yyyy-MM-dd') === todayStr;
-      })
-    };
+  const todayBookings = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return (allBookings || []).filter(b => b.bookingDate === today);
   }, [allBookings]);
-  
-  const offeringFormSchema = useMemo(() => z.object({
-    offeringId: z.string({
-      required_error: language === 'en' ? 'Please select an offering.' : 'ദയവായി ഒരു വഴിപാട് തിരഞ്ഞെടുക്കുക.',
-    }),
-    bookingDate: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
-      message: language === 'en' ? "A valid date for the offering is required." : "വഴിപാടിന് സാധുവായ ഒരു തീയതി ആവശ്യമാണ്.",
-    }),
-    name: z.string().min(2, {
-      message: language === 'en' ? 'Name must be at least 2 characters.' : 'പേരിൽ കുറഞ്ഞത് 2 അക്ഷരങ്ങളെങ്കിലും വേണം.',
-    }),
-    email: z.string().email({
-      message: language === 'en' ? 'Please enter a valid email address.' : 'ദയവായി ശരിയായ ഒരു ഇമെയിൽ വിലാസം നൽകുക.',
-    }),
-    star: z.string({ required_error: language === 'en' ? 'Please select your star.' : 'ദയവായി നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക.' }),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-  }), [language]);
 
-  const donationFormSchema = useMemo(() => z.object({
-    amount: z.coerce.number().positive({
-      message: language === 'en' ? 'Please enter a valid amount.' : 'ദയവായി ശരിയായ ഒരു തുക നൽകുക.',
-    }),
-    donationDate: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
-      message: language === 'en' ? "A valid date is required." : "സാധുവായ ഒരു തീയതി ആവശ്യമാണ്.",
-    }),
-    name: z.string().min(2, {
-      message: language === 'en' ? 'Name must be at least 2 characters.' : 'പേരിൽ കുറഞ്ഞത് 2 അക്ഷരങ്ങളെങ്കിലും വേണം.',
-    }),
-    star: z.string({ required_error: language === 'en' ? 'Please select your star.' : 'ദയവായി നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക.' }),
-    email: z.string().email({
-      message: language === 'en' ? 'Please enter a valid email address.' : 'ദയവായി ശരിയായ ഒരു ഇമെയിൽ വിലാസം നൽകുക.',
-    }),
-    purpose: z.string().optional(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-  }), [language]);
+  // Forms
+  const todayFormSchema = z.object({
+    offeringId: z.string().min(1, 'Please select an offering'),
+    bookingDate: z.string(),
+    name: z.string().min(3, 'Name must be at least 3 characters'),
+    star: z.string().min(1, 'Please select a star'),
+    phone: z.string().min(10, 'Please enter a valid phone number'),
+    email: z.string().email('Please enter a valid email'),
+    address: z.string().min(5, 'Please enter your address'),
+  });
 
-
-  const todayForm = useForm<z.infer<typeof offeringFormSchema>>({
-    resolver: zodResolver(offeringFormSchema),
+  const todayForm = useForm<z.infer<typeof todayFormSchema>>({
+    resolver: zodResolver(todayFormSchema),
     defaultValues: {
       offeringId: '',
       bookingDate: format(new Date(), 'yyyy-MM-dd'),
-      name: user?.displayName || '',
-      email: user?.email || '',
+      name: '',
       star: '',
       phone: '',
+      email: user?.email || '',
       address: '',
     },
   });
 
-  const futureForm = useForm<z.infer<typeof offeringFormSchema>>({
-    resolver: zodResolver(offeringFormSchema),
-    defaultValues: {
-      offeringId: '',
-      bookingDate: format(new Date(), 'yyyy-MM-dd'),
-      name: user?.displayName || '',
-      email: user?.email || '',
-      star: '',
-      phone: '',
-      address: '',
-    },
+  const donationFormSchema = z.object({
+    amount: z.coerce.number().min(1, 'Amount must be at least 1'),
+    donationDate: z.string(),
+    purpose: z.string().optional(),
+    name: z.string().min(3, 'Name must be at least 3 characters'),
+    star: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email('Please enter a valid email'),
+    address: z.string().optional(),
   });
 
   const donationForm = useForm<z.infer<typeof donationFormSchema>>({
     resolver: zodResolver(donationFormSchema),
     defaultValues: {
-      amount: '' as any,
+      amount: 0,
       donationDate: format(new Date(), 'yyyy-MM-dd'),
-      name: user?.displayName || '',
-      star: '',
-      email: user?.email || '',
-      phone: '',
-      address: '',
       purpose: '',
+      name: '',
+      star: '',
+      phone: '',
+      email: user?.email || '',
+      address: '',
     },
   });
 
-  // Update form defaults when user loads
-  useEffect(() => {
-    const userValues = {
-      name: user?.displayName || '',
-      email: user?.email || '',
-    };
-    todayForm.reset({ 
-      ...todayForm.getValues(), 
-      ...userValues,
-      bookingDate: format(new Date(), 'yyyy-MM-dd')
-    });
-    futureForm.reset({ 
-      ...futureForm.getValues(), 
-      ...userValues,
-      bookingDate: format(new Date(), 'yyyy-MM-dd')
-    });
-    donationForm.reset({ 
-      ...donationForm.getValues(), 
-      ...userValues,
-      donationDate: format(new Date(), 'yyyy-MM-dd')
-    });
-  }, [user]);
+  const manualIncomeSchema = z.object({
+    categoryId: z.string().min(1, 'Category is required'),
+    subCategoryIndex: z.string().min(1, 'Sub-category is required'),
+    amount: z.coerce.number().min(1, 'Amount must be at least 1'),
+    date: z.string(),
+    receivedFrom: z.string().min(3, 'Received from is required'),
+    descriptionEn: z.string().min(3, 'Description is required'),
+    descriptionMl: z.string().optional(),
+    paymentMethod: z.string().default('Cash'),
+    receiptNo: z.string().optional(),
+  });
 
-  async function handleOfferingSubmit(values: z.infer<typeof offeringFormSchema>, form: any) {
-    if (!firestore || !offeringsList || offeringsList.length === 0) {
-       toast({ variant: 'destructive', title: 'Error', description: 'Offerings not loaded yet. Please try again in a moment.' });
-       form.reset(values, { keepIsSubmitting: false });
+  const manualForm = useForm<z.infer<typeof manualIncomeSchema>>({
+    resolver: zodResolver(manualIncomeSchema),
+    defaultValues: {
+      categoryId: '',
+      subCategoryIndex: '',
+      amount: 0,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      receivedFrom: '',
+      descriptionEn: '',
+      descriptionMl: '',
+      paymentMethod: 'Cash',
+      receiptNo: '',
+    },
+  });
+
+  const selectedManualCatId = manualForm.watch('categoryId');
+  const selectedManualCategory = INCOME_CATEGORIES.find(c => c.id === selectedManualCatId);
+
+  // Submissions
+  async function onOfferingSubmit(values: z.infer<typeof todayFormSchema>) {
+    if (!firestore || !user) {
+      setIsLoginOpen(true);
       return;
     }
 
-    const selectedOffering = offeringsList.find(o => o.id === values.offeringId);
-    if (!selectedOffering) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selected offering not found.' });
-      form.reset(values, { keepIsSubmitting: false });
-      return;
-    }
-    
-    const tempId = `temp_${Date.now()}`;
+    const selectedOffering = offeringsList?.find(o => o.id === values.offeringId);
+    if (!selectedOffering) return;
 
-    const bookingData: OfferingBooking = {
-      id: tempId,
-      offeringId: selectedOffering.id,
-      offeringNameEn: selectedOffering.nameEn,
-      offeringNameMl: selectedOffering.name,
-      price: selectedOffering.price,
-      userName: values.name,
-      userEmail: values.email,
-      bookingDate: new Date(values.bookingDate).toISOString(),
-      submissionDate: new Date().toISOString(),
-      star: values.star,
-      phone: values.phone,
-      language: language,
-      paymentStatus: 'Pending',
-      address: values.address,
-      receiptSentAt: null,
-    };
-    
-    setActiveRecord(bookingData);
-    setPaymentAmount(selectedOffering.price);
-    setPaymentType('booking');
-    setPaymentDialogOpen(true);
-    form.reset({}, { keepIsSubmitting: false, keepValues: false });
+    try {
+      const bookingData: Omit<OfferingBooking, 'id'> = {
+        offeringId: selectedOffering.id,
+        offeringNameEn: selectedOffering.nameEn,
+        offeringNameMl: selectedOffering.name,
+        price: selectedOffering.price,
+        userName: values.name,
+        userEmail: values.email,
+        bookingDate: values.bookingDate,
+        submissionDate: new Date().toISOString(),
+        star: values.star,
+        phone: values.phone,
+        address: values.address,
+        paymentStatus: 'Pending',
+        language: language,
+      };
+
+      const docRef = await addDoc(collection(firestore, 'offeringBookings'), bookingData);
+      const newRecord = { id: docRef.id, ...bookingData } as OfferingBooking;
+      
+      setActiveRecord(newRecord);
+      setPaymentAmount(selectedOffering.price);
+      setPaymentType('booking');
+      setPaymentDialogOpen(true);
+      
+      todayForm.reset();
+    } catch (error) {
+      console.error('Error submitting booking:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to submit booking. Please try again.',
+      });
+    }
   }
 
-  const onTodaySubmit = (values: z.infer<typeof offeringFormSchema>) => handleOfferingSubmit(values, todayForm);
-  const onFutureSubmit = (values: z.infer<typeof offeringFormSchema>) => handleOfferingSubmit(values, futureForm);
-
   async function onDonationSubmit(values: z.infer<typeof donationFormSchema>) {
-     if (!firestore) return;
-     
-     const tempId = `temp_${Date.now()}`;
-     const donationData: Donation = {
-       id: tempId,
-       amount: values.amount,
-       userName: values.name,
-       star: values.star,
-       userEmail: values.email,
-       donationDate: new Date(values.donationDate).toISOString(),
-       phone: values.phone,
-       address: values.address,
-       purpose: values.purpose,
-       language: language,
-       paymentStatus: 'Pending',
-       receiptSentAt: null,
-     };
+    if (!firestore || !user) {
+      setIsLoginOpen(true);
+      return;
+    }
 
-      setActiveRecord(donationData);
+    try {
+      const donationData: Omit<Donation, 'id'> = {
+        amount: values.amount,
+        donationDate: values.donationDate,
+        purpose: values.purpose,
+        userName: values.name,
+        star: values.star || '',
+        userEmail: values.email,
+        phone: values.phone,
+        address: values.address,
+        paymentStatus: 'Pending',
+        language: language,
+      };
+
+      const docRef = await addDoc(collection(firestore, 'donations'), donationData);
+      const newRecord = { id: docRef.id, ...donationData } as Donation;
+
+      setActiveRecord(newRecord);
       setPaymentAmount(values.amount);
       setPaymentType('donation');
       setPaymentDialogOpen(true);
-      donationForm.reset({}, { keepIsSubmitting: false, keepValues: false });
+
+      donationForm.reset();
+    } catch (error) {
+      console.error('Error submitting donation:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to submit donation. Please try again.',
+      });
+    }
   }
 
-  const handlePaymentSuccess = async (savedRecord: OfferingBooking | Donation) => {
+  async function onManualIncomeSubmit(values: z.infer<typeof manualIncomeSchema>) {
+    if (!firestore || !canManage) return;
+
+    try {
+      const cat = INCOME_CATEGORIES.find(c => c.id === values.categoryId);
+      const subCat = cat?.subcategories[parseInt(values.subCategoryIndex)];
+
+      if (!cat || !subCat) throw new Error('Invalid category');
+
+      const incomeData = {
+        categoryEn: cat.nameEn,
+        categoryMl: cat.nameMl,
+        subCategoryEn: subCat.nameEn,
+        subCategoryMl: subCat.nameMl,
+        amount: values.amount,
+        date: values.date,
+        receivedFrom: values.receivedFrom,
+        descriptionEn: values.descriptionEn,
+        descriptionMl: values.descriptionMl || values.descriptionEn,
+        paymentMethod: values.paymentMethod,
+        receiptNo: values.receiptNo || `R-${Date.now().toString().slice(-6)}`,
+        createdByUser: user?.email,
+        createdAt: new Date().toISOString(),
+      };
+
+      await addDoc(collection(firestore, 'income'), incomeData);
+      
+      toast({
+        title: 'Income Logged',
+        description: 'Income record has been successfully added.',
+      });
+
+      manualForm.reset({
+        categoryId: '',
+        subCategoryIndex: '',
+        amount: 0,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        receivedFrom: '',
+        descriptionEn: '',
+        descriptionMl: '',
+        paymentMethod: 'Cash',
+        receiptNo: '',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to log income.',
+      });
+    }
+  }
+
+  const handlePaymentSuccess = () => {
     setPaymentDialogOpen(false);
-    setActiveRecord(savedRecord);
     setConfirmationDialogOpen(true);
   };
 
   const handleCloseAll = () => {
     setConfirmationDialogOpen(false);
     setActiveRecord(null);
-    router.push('/');
-  }
+  };
+
+  const handleDeleteManualIncome = async (id: string) => {
+    if (!firestore || !canManage) return;
+    if (!confirm('Are you sure you want to delete this income record?')) return;
+    
+    try {
+      await deleteDoc(doc(firestore, 'income', id));
+      toast({ title: 'Record deleted' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error deleting record' });
+    }
+  };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!user) {
-    return (
-      <>
-        <SiteHeader />
-        <main className="flex-1 bg-background flex flex-col items-center justify-center py-20 px-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center max-w-md p-8 bg-card border border-border rounded-xl shadow-lg"
-          >
-            <ShieldAlert className="h-16 w-16 text-amber-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-headline font-bold text-foreground mb-2">
-              {language === 'en' ? 'Access Restricted' : 'പ്രവേശനം പരിമിതപ്പെടുത്തിയിരിക്കുന്നു'}
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              {language === 'en' 
-                ? 'Only registered devotees with account credentials can submit bookings, donations, or view records.'
-                : 'അക്കൗണ്ട് വിവരങ്ങളുള്ള രജിസ്റ്റർ ചെയ്ത ഭക്തർക്ക് മാത്രമേ വഴിപാട് ബുക്കിംഗുകൾ, സംഭാവനകൾ അല്ലെങ്കിൽ മറ്റ് വിവരങ്ങൾ കാണാൻ സാധിക്കൂ.'}
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button onClick={() => setIsLoginOpen(true)} className="flex items-center gap-2">
-                Login / Register
-              </Button>
-              <Button variant="outline" onClick={() => window.location.href = '/'}>
-                {language === 'en' ? 'Back to Home' : 'പ്രധാന പേജിലേക്ക്'}
-              </Button>
-            </div>
-          </motion.div>
-          <LoginDialog isOpen={isLoginOpen} onOpenChange={setIsLoginOpen} />
-        </main>
-        <SiteFooter />
-      </>
-    );
-  }
-
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-slate-50/50">
       <SiteHeader />
-      <main className="flex-1 bg-background">
-        <section id="income" className="container mx-auto px-4 py-8 md:py-16 scroll-mt-16 relative group">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">
-              {language === 'en' ? 'Temple Income Services' : 'ക്ഷേത്ര വരുമാന സേവനങ്ങൾ'}
-            </h2>
-            <p className="text-lg text-muted-foreground mt-2">
-              {language === 'en'
-                ? 'Support the temple through offerings, poojas, and generous donations'
-                : 'വഴിപാടുകൾ, പൂജകൾ, ഉദാരമായ സംഭാവനകൾ എന്നിവയിലൂടെ ക്ഷേത്രത്തെ പിന്തുണയ്ക്കുക'}
+      
+      <main className="flex-1 container py-10 px-4">
+        <div className="max-w-6xl mx-auto space-y-10">
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-primary font-headline">
+              {language === 'en' ? 'Temple Income' : 'ക്ഷേത്ര വരുമാനം'}
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              {language === 'en' 
+                ? 'Offerings, donations, and other financial receipts.' 
+                : 'വഴിപാടുകൾ, സംഭാവനകൾ, മറ്റ് വരുമാനങ്ങൾ എന്നിവ ഇവിടെ രേഖപ്പെടുത്താം.'}
             </p>
           </div>
-          <div className="max-w-4xl mx-auto">
-            <Tabs defaultValue="today" className="w-full">
-              <div className="overflow-x-auto pb-2">
-                <TabsList className="flex w-max md:w-full bg-primary/10 p-1 mb-6">
-                  <TabsTrigger
-                    value="today"
-                    className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 px-4"
-                  >
-                    <Clock className="h-4 w-4" />
-                    <span className="hidden sm:inline">{language === 'en' ? "Today's Booking" : "ഇന്നത്തെ വഴിപാട്"}</span>
-                    <span className="sm:hidden">{language === 'en' ? 'Today' : 'ഇന്ന്'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="offerings"
-                    className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 px-4"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    <span className="hidden sm:inline">{language === 'en' ? 'Future Booking' : 'ഭാവിയിലെ വഴിപാട്'}</span>
-                    <span className="sm:hidden">{language === 'en' ? 'Future' : 'ഭാവി'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="donations"
-                    className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 px-4"
-                  >
-                    <Heart className="h-4 w-4" />
-                    <span className="hidden sm:inline">{language === 'en' ? 'Donations' : 'സംഭാവനകൾ'}</span>
-                    <span className="sm:hidden">{language === 'en' ? 'Donation' : 'സംഭാവന'}</span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
 
-              <TabsContent value="offerings">
-                <Card className="border-accent/30 max-w-2xl mx-auto">
+          <Tabs defaultValue="offerings" className="w-full">
+            <div className="flex justify-center mb-8">
+              <TabsList className="grid grid-cols-3 md:w-[600px] h-12">
+                <TabsTrigger value="offerings" className="text-sm font-semibold">
+                  <Flame className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'Offerings' : 'വഴിപാടുകൾ'}
+                </TabsTrigger>
+                <TabsTrigger value="donations" className="text-sm font-semibold">
+                  <Heart className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'Donations' : 'സംഭാവനകൾ'}
+                </TabsTrigger>
+                {canManage && (
+                  <TabsTrigger value="manual" className="text-sm font-semibold">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    {language === 'en' ? 'Admin Entry' : 'അഡ്മിൻ എൻട്രി'}
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
+
+            <TabsContent value="offerings" className="space-y-8">
+              <div className="grid lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-2 shadow-md border-none">
                   <CardHeader>
-                    <CardTitle>
-                      {language === 'en'
-                        ? 'Book Offering for Future Date'
-                        : 'ഭാവി തീയതിയിലേക്കായി വഴിപാട് ബുക്ക് ചെയ്യുക'}
+                    <CardTitle className="flex items-center gap-2">
+                      <PlusCircle className="h-5 w-5 text-primary" />
+                      {language === 'en' ? 'Book an Offering' : 'വഴിപാട് ബുക്ക് ചെയ്യുക'}
                     </CardTitle>
                     <CardDescription>
-                      {language === 'en'
-                        ? 'Select a future date for your offerings and poojas.'
-                        : 'ഭാവിയിലെ വഴിപാടുകൾക്കും പൂജകൾക്കുമായി ഒരു തീയതി തിരഞ്ഞെടുക്കുക.'}
+                      {language === 'en' 
+                        ? 'Select an offering to be performed in your name.' 
+                        : 'നിങ്ങളുടെ പേരിൽ നടത്തേണ്ട വഴിപാട് തിരഞ്ഞെടുക്കുക.'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Form {...futureForm}>
-                      <form
-                        onSubmit={futureForm.handleSubmit(onFutureSubmit)}
-                        className="space-y-6"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Form {...todayForm}>
+                      <form onSubmit={todayForm.handleSubmit(onOfferingSubmit)} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
                           <FormField
-                            control={futureForm.control}
+                            control={todayForm.control}
                             name="offeringId"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>
-                                  {language === 'en'
-                                    ? 'Select Offering'
-                                    : 'വഴിപാട് തിരഞ്ഞെടുക്കുക'}
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                  disabled={loading || !offeringsList || offeringsList.length === 0}
-                                >
+                                <FormLabel>{language === 'en' ? 'Offering' : 'വഴിപാട്'}</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue
-                                        placeholder={
-                                          loading 
-                                          ? (language === 'en' ? "Loading offerings..." : "വഴിപാടുകൾ ലോഡ് ചെയ്യുന്നു...")
-                                          : language === 'en'
-                                            ? 'Select a vazhipadu'
-                                            : 'ഒരു വഴിപാട് തിരഞ്ഞെടുക്കുക'
-                                        }
-                                      />
+                                      <SelectValue placeholder="Select offering" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {offeringsList && offeringsList.map((offering) => (
-                                      <SelectItem
-                                        key={offering.id}
-                                        value={offering.id}
-                                      >
-                                        {language === 'en'
-                                          ? `${offering.nameEn} (₹${offering.price})`
-                                          : `${offering.name} (₹${offering.price})`}
+                                    {offeringsList && offeringsList.map(offering => (
+                                      <SelectItem key={offering.id} value={offering.id}>
+                                        {language === 'en' ? offering.nameEn : offering.name} (₹{offering.price})
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -457,46 +437,33 @@ export default function IncomePage() {
                             )}
                           />
                           <FormField
-                            control={futureForm.control}
+                            control={todayForm.control}
                             name="bookingDate"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>{language === 'en' ? 'Date of Offering' : 'വഴിപാട് നടത്തേണ്ട തീയതി'}</FormLabel>
+                                <FormLabel>{language === 'en' ? 'Date' : 'തീയതി'}</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="date" 
-                                    {...field} 
-                                    className="w-full" 
-                                  />
+                                  <Input type="date" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                           <FormField
-                            control={futureForm.control}
+                            control={todayForm.control}
                             name="name"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>
-                                  {language === 'en' ? 'Name' : 'പേര്'}
-                                </FormLabel>
+                                <FormLabel>{language === 'en' ? 'Name' : 'പേര്'}</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder={
-                                      language === 'en'
-                                        ? 'Your full name'
-                                        : 'നിങ്ങളുടെ മുഴുവൻ പേര്'
-                                    }
-                                    {...field}
-                                  />
+                                  <Input placeholder="Full name" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                           <FormField
-                            control={futureForm.control}
+                            control={todayForm.control}
                             name="star"
                             render={({ field }) => (
                               <FormItem>
@@ -504,12 +471,12 @@ export default function IncomePage() {
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder={language === 'en' ? 'Select your birth star' : 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക'} />
+                                      <SelectValue placeholder="Select star" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {stars.map((star) => (
-                                      <SelectItem key={star.ml} value={language === 'en' ? star.en : star.ml}>
+                                    {stars.map(star => (
+                                      <SelectItem key={star.en} value={language === 'en' ? star.en : star.ml}>
                                         {language === 'en' ? star.en : star.ml}
                                       </SelectItem>
                                     ))}
@@ -519,650 +486,327 @@ export default function IncomePage() {
                               </FormItem>
                             )}
                           />
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-6">
                            <FormField
-                            control={futureForm.control}
+                            control={todayForm.control}
                             name="phone"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>
-                                  {language === 'en' ? 'Phone No' : 'ഫോൺ നമ്പർ'}
-                                </FormLabel>
+                                <FormLabel>{language === 'en' ? 'Phone' : 'ഫോൺ'}</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder={
-                                      language === 'en'
-                                        ? 'Your contact number'
-                                        : 'നിങ്ങളുടെ ഫോൺ നമ്പർ'
-                                    }
-                                    {...field}
-                                  />
+                                  <Input placeholder="Phone number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                           <FormField
-                            control={futureForm.control}
+                          <FormField
+                            control={todayForm.control}
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>
-                                  {language === 'en' ? 'Email' : 'ഇമെയിൽ'}
-                                </FormLabel>
+                                <FormLabel>{language === 'en' ? 'Email' : 'ഇമെയിൽ'}</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder={
-                                      language === 'en'
-                                        ? 'Your email address'
-                                        : 'നിങ്ങളുടെ ഇമെയിൽ വിലാസം'
-                                    }
-                                    {...field}
-                                  />
+                                  <Input placeholder="Email address" {...field} />
                                 </FormControl>
-                                <FormDescription>
-                                  {language === 'en'
-                                    ? 'Your receipt will be sent to this email.'
-                                    : 'രസീത് ഈ ഇമെയിലിലേക്ക് അയക്കും.'}
-                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
-                         <FormField
-                          control={futureForm.control}
+                        <FormField
+                          control={todayForm.control}
                           name="address"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>
-                                {language === 'en' ? 'Address' : 'വിലാസം'}
-                              </FormLabel>
+                              <FormLabel>{language === 'en' ? 'Address' : 'വിലാസം'}</FormLabel>
                               <FormControl>
-                                <Textarea
-                                  placeholder={
-                                    language === 'en'
-                                      ? 'Your full address'
-                                      : 'നിങ്ങളുടെ മുഴുവൻ വിലാസം'
-                                  }
-                                  {...field}
-                                />
+                                <Textarea placeholder="Full address" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
-                        <Button
-                          type="submit"
-                          disabled={futureForm.formState.isSubmitting || loading || !offeringsList || offeringsList.length === 0}
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                        >
-                          {language === 'en'
-                            ? 'Submit Future Booking'
-                            : 'ഭാവിയിലേക്ക് ബുക്ക് ചെയ്യുക'}
+                        <Button type="submit" className="w-full h-12 text-lg font-bold">
+                          {language === 'en' ? 'Book Offering' : 'വഴിപാട് ബുക്ക് ചെയ്യുക'}
                         </Button>
                       </form>
                     </Form>
                   </CardContent>
                 </Card>
-              </TabsContent>
-              <TabsContent value="today">
+
                 <div className="space-y-8">
-                  <Card className="border-accent/30 max-w-2xl mx-auto">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <PlusCircle className="h-5 w-5 text-primary" />
-                        {language === 'en' ? "Book Offering for Today" : "ഇന്നത്തേക്ക് വഴിപാട് ബുക്ക് ചെയ്യുക"}
+                  <Card className="shadow-md border-none">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        {language === 'en' ? "Today's Schedule" : 'ഇന്നത്തെ വഴിപാടുകൾ'}
                       </CardTitle>
-                      <CardDescription>
-                        {language === 'en'
-                          ? `Submit an offering for today, ${format(new Date(), 'PP')}`
-                          : `ഇന്നത്തെ (${format(new Date(), 'PP')}) വഴിപാടുകൾ സമർപ്പിക്കുക.`}
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Form {...todayForm}>
-                        <form
-                          onSubmit={todayForm.handleSubmit(onTodaySubmit)}
-                          className="space-y-6"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <FormField
-                                control={todayForm.control}
-                                name="offeringId"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>
-                                      {language === 'en' ? 'Select Offering' : 'വഴിപാട് തിരഞ്ഞെടുക്കുക'}
-                                    </FormLabel>
-                                    <Select 
-                                      onValueChange={field.onChange} 
-                                      value={field.value}
-                                      disabled={loading || !offeringsList || offeringsList.length === 0}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue
-                                            placeholder={
-                                              loading 
-                                              ? (language === 'en' ? "Loading offerings..." : "വഴിപാടുകൾ ലോഡ് ചെയ്യുന്നു...")
-                                              : language === 'en'
-                                                ? 'Select an offering'
-                                                : 'വഴിപാട് തിരഞ്ഞെടുക്കുക'
-                                            }
-                                          />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {offeringsList?.map((offering) => (
-                                          <SelectItem key={offering.id} value={offering.id}>
-                                            {language === 'en'
-                                              ? `${offering.nameEn} (₹${offering.price})`
-                                              : `${offering.name} (₹${offering.price})`}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            <FormField
-                              control={todayForm.control}
-                              name="bookingDate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Date of Offering' : 'വഴിപാട് നടത്തേണ്ട തീയതി'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input type="date" {...field} disabled className="bg-muted" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={todayForm.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'en' ? 'Name' : 'പേര്'}</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your full name'
-                                          : 'നിങ്ങളുടെ മുഴുവൻ പേര്'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={todayForm.control}
-                              name="star"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'en' ? 'Star' : 'നക്ഷത്രം'}</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue
-                                          placeholder={
-                                            language === 'en'
-                                              ? 'Select your birth star'
-                                              : 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക'
-                                          }
-                                        />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {stars.map((star) => (
-                                        <SelectItem
-                                          key={star.ml}
-                                          value={language === 'en' ? star.en : star.ml}
-                                        >
-                                          {language === 'en' ? star.en : star.ml}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={todayForm.control}
-                              name="phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Phone No' : 'ഫോൺ നമ്പർ'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your contact number'
-                                          : 'നിങ്ങളുടെ ഫോൺ നമ്പർ'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={todayForm.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'en' ? 'Email' : 'ഇമെയിൽ'}</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your email address'
-                                          : 'നിങ്ങളുടെ ഇമെയിൽ വിലാസം'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    {language === 'en'
-                                      ? 'Your receipt will be sent to this email.'
-                                      : 'രസീത് ഈ ഇമെയിലിലേക്ക് അയക്കും.'}
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                      <div className="space-y-4">
+                        { (todayBookings || []).length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-4">No bookings for today.</p>
+                        ) : (
+                          todayBookings.map(b => (
+                            <div key={b.id} className="flex justify-between items-center text-sm p-2 bg-slate-50 rounded">
+                              <div>
+                                <p className="font-bold">{b.userName}</p>
+                                <p className="text-xs text-muted-foreground">{language === 'en' ? b.offeringNameEn : b.offeringNameMl}</p>
+                              </div>
+                              <Badge variant="secondary">₹{b.price}</Badge>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="donations" className="space-y-8">
+              <Card className="max-w-3xl mx-auto shadow-md border-none">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="h-5 w-5 text-rose-500" />
+                    {language === 'en' ? 'General Donations' : 'സംഭാവനകൾ'}
+                  </CardTitle>
+                  <CardDescription>Support temple activities and maintenance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...donationForm}>
+                    <form onSubmit={donationForm.handleSubmit(onDonationSubmit)} className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <FormField
+                          control={donationForm.control}
+                          name="amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Amount (₹)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={donationForm.control}
+                          name="purpose"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Purpose</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g. Annadanam, Renovation" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <FormField
+                          control={donationForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={donationForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button type="submit" className="w-full h-12 text-lg font-bold bg-rose-600 hover:bg-rose-700">
+                        {language === 'en' ? 'Donate Now' : 'സംഭാവന നൽകുക'}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {canManage && (
+              <TabsContent value="manual" className="space-y-8">
+                <div className="grid lg:grid-cols-3 gap-8">
+                  <Card className="lg:col-span-1 shadow-md border-none">
+                    <CardHeader>
+                      <CardTitle>{language === 'en' ? 'Direct Income Entry' : 'നേരിട്ടുള്ള വരുമാനം'}</CardTitle>
+                      <CardDescription>Log income according to standardized categories.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...manualForm}>
+                        <form onSubmit={manualForm.handleSubmit(onManualIncomeSubmit)} className="space-y-4">
                           <FormField
-                            control={todayForm.control}
-                            name="address"
+                            control={manualForm.control}
+                            name="categoryId"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>{language === 'en' ? 'Address' : 'വിലാസം'}</FormLabel>
+                                <FormLabel>Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select Category" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {INCOME_CATEGORIES.map(cat => (
+                                      <SelectItem key={cat.id} value={cat.id}>{language === 'en' ? cat.nameEn : cat.nameMl}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={manualForm.control}
+                            name="subCategoryIndex"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Sub-category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedManualCategory}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select Sub-category" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {selectedManualCategory?.subcategories.map((sub, idx) => (
+                                      <SelectItem key={idx} value={idx.toString()}>{language === 'en' ? sub.nameEn : sub.nameMl}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={manualForm.control}
+                            name="amount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Amount (₹)</FormLabel>
                                 <FormControl>
-                                  <Textarea
-                                    placeholder={
-                                      language === 'en'
-                                        ? 'Your full address'
-                                        : 'നിങ്ങളുടെ മുഴുവൻ വിലാസം'
-                                    }
-                                    {...field}
-                                  />
+                                  <Input type="number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-
-                          <Button
-                            type="submit"
-                            disabled={todayForm.formState.isSubmitting}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                          >
-                            {language === 'en' ? 'Submit Offering' : 'വഴിപാട് സമർപ്പിക്കുക'}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-accent/30">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-primary" />
-                        {language === 'en' ? "Today's Offering List" : "ഇന്നത്തെ വഴിപാട് പട്ടിക"}
-                      </CardTitle>
-                      <CardDescription>
-                        {language === 'en' 
-                          ? `List of offerings scheduled for today, ${format(new Date(), 'PP')}`
-                          : `ഇന്നത്തെ (${format(new Date(), 'PP')}) വഴിപാടുകളുടെ പട്ടിക`}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {bookingsLoading ? (
-                        <div className="flex justify-center py-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      ) : todayBookings.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed rounded-lg bg-muted/30">
-                          <Calendar className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                          <p className="text-muted-foreground">
-                            {language === 'en' ? 'No offerings booked for today.' : 'ഇന്നത്തേക്ക് വഴിപാടുകൾ ഒന്നും ബുക്ക് ചെയ്തിട്ടില്ല.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="rounded-md border overflow-hidden">
-                          <Table>
-                            <TableHeader className="bg-muted/50">
-                              <TableRow>
-                                <TableHead>{language === 'en' ? 'Name' : 'പേര്'}</TableHead>
-                                <TableHead>{language === 'en' ? 'Star' : 'നക്ഷത്രം'}</TableHead>
-                                <TableHead>{language === 'en' ? 'Offering' : 'വഴിപാട്'}</TableHead>
-                                <TableHead className="text-right">{language === 'en' ? 'Amount' : 'തുക'}</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {todayBookings.map((booking) => (
-                                <TableRow key={booking.id}>
-                                  <TableCell className="font-medium">{booking.userName}</TableCell>
-                                  <TableCell>{booking.star}</TableCell>
-                                  <TableCell>
-                                    {language === 'en' ? booking.offeringNameEn : booking.offeringNameMl}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono">₹{booking.price}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="donations">
-                <div className="space-y-8">
-                  <Card className="border-accent/30 max-w-2xl mx-auto">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <PlusCircle className="h-5 w-5 text-primary" />
-                        {language === 'en' ? 'Make a Donation' : 'സംഭാവന ചെയ്യുക'}
-                      </CardTitle>
-                      <CardDescription>
-                        {language === 'en'
-                          ? 'Your generous contribution helps maintain the temple.'
-                          : 'നിങ്ങളുടെ ഉദാരമായ സംഭാവന ക്ഷേത്രം പരിപാലിക്കാൻ സഹായിക്കുന്നു.'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...donationForm}>
-                        <form
-                          onSubmit={donationForm.handleSubmit(onDonationSubmit)}
-                          className="space-y-6"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                              control={donationForm.control}
-                              name="amount"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Amount (INR)' : 'തുക (INR)'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Enter amount'
-                                          : 'തുക നൽകുക'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={donationForm.control}
-                              name="donationDate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'en' ? 'Date of Donation' : 'സംഭാവന തീയതി'}</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="date" 
-                                      {...field} 
-                                      className="w-full" 
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={donationForm.control}
-                              name="purpose"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Purpose' : 'ഉദ്ദേശ്യം'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'e.g., Temple renovation'
-                                          : 'ഉദാ: ക്ഷേത്ര നവീകരണം'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={donationForm.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Name' : 'പേര്'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your full name'
-                                          : 'നിങ്ങളുടെ മുഴുവൻ പേര്'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                             <FormField
-                              control={donationForm.control}
-                              name="star"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'en' ? 'Star' : 'നക്ഷത്രം'}</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder={language === 'en' ? 'Select your birth star' : 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക'} />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {stars.map((star) => (
-                                        <SelectItem key={star.ml} value={language === 'en' ? star.en : star.ml}>
-                                          {language === 'en' ? star.en : star.ml}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={donationForm.control}
-                              name="phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Phone No' : 'ഫോൺ നമ്പർ'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your contact number'
-                                          : 'നിങ്ങളുടെ ഫോൺ നമ്പർ'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                             <FormField
-                              control={donationForm.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {language === 'en' ? 'Email' : 'ഇമെയിൽ'}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={
-                                        language === 'en'
-                                          ? 'Your email address'
-                                          : 'നിങ്ങളുടെ ഇമെയിൽ വിലാസം'
-                                      }
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    {language === 'en'
-                                      ? 'Your receipt will be sent to this email.'
-                                      : 'രസീത് ഈ ഇമെയിലിലേക്ക് അയക്കും.'}
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
                           <FormField
-                            control={donationForm.control}
-                            name="address"
+                            control={manualForm.control}
+                            name="receivedFrom"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>
-                                  {language === 'en' ? 'Address' : 'വിലാസം'}
-                                </FormLabel>
+                                <FormLabel>Received From</FormLabel>
                                 <FormControl>
-                                  <Textarea
-                                    placeholder={
-                                      language === 'en'
-                                        ? 'Your full address'
-                                        : 'നിങ്ങളുടെ മുഴുവൻ വിലാസം'
-                                    }
-                                    {...field}
-                                  />
+                                  <Input {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                         
-                          <Button
-                            type="submit"
-                            disabled={donationForm.formState.isSubmitting}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                          >
-                            {language === 'en' ? 'Submit Donation' : 'സംഭാവന സമർപ്പിക്കുക'}
-                          </Button>
+                          <FormField
+                            control={manualForm.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Date</FormLabel>
+                                <FormControl>
+                                  <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button type="submit" className="w-full">Log Income</Button>
                         </form>
                       </Form>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-accent/30">
+                  <Card className="lg:col-span-2 shadow-md border-none">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        {language === 'en' ? 'Recent Donations' : 'സമീപകാലത്തെ സംഭാവനകൾ'}
-                      </CardTitle>
-                      <CardDescription>
-                        {language === 'en' 
-                          ? 'History of contributions received'
-                          : 'ലഭിച്ച സംഭാവനകളുടെ ചരിത്രം'}
-                      </CardDescription>
+                      <CardTitle>Recent Categorized Income</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      {donationsLoading ? (
-                        <div className="flex justify-center py-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      ) : allDonations.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed rounded-lg bg-muted/30">
-                          <Heart className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                          <p className="text-muted-foreground">
-                            {language === 'en' ? 'No donations found.' : 'സംഭാവനകൾ ഒന്നും കണ്ടെത്തിയില്ല.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="rounded-md border overflow-hidden">
-                          <Table>
-                            <TableHeader className="bg-muted/50">
-                              <TableRow>
-                                <TableHead>{language === 'en' ? 'Date' : 'തീയതി'}</TableHead>
-                                <TableHead>{language === 'en' ? 'Name' : 'പേര്'}</TableHead>
-                                <TableHead>{language === 'en' ? 'Purpose' : 'ഉദ്ദേശ്യം'}</TableHead>
-                                <TableHead className="text-right">{language === 'en' ? 'Amount' : 'തുക'}</TableHead>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>From</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          { (allDirectIncome || []).length === 0 ? (
+                            <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No records found.</TableCell></TableRow>
+                          ) : (
+                            (allDirectIncome || []).map(inc => (
+                              <TableRow key={inc.id}>
+                                <TableCell className="text-xs">{inc.date}</TableCell>
+                                <TableCell>
+                                  <div className="text-sm font-bold">{language === 'en' ? inc.categoryEn : inc.categoryMl}</div>
+                                  <div className="text-[10px] text-muted-foreground">{language === 'en' ? inc.subCategoryEn : inc.subCategoryMl}</div>
+                                </TableCell>
+                                <TableCell className="text-sm">{inc.receivedFrom}</TableCell>
+                                <TableCell className="text-right font-bold">₹{inc.amount}</TableCell>
+                                <TableCell>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteManualIncome(inc.id)} className="h-8 w-8 text-rose-500">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {allDonations.map((donation) => (
-                                <TableRow key={donation.id}>
-                                  <TableCell className="text-sm font-mono whitespace-nowrap">
-                                    {format(new Date(donation.donationDate), 'dd/MM/yyyy')}
-                                  </TableCell>
-                                  <TableCell className="font-medium">{donation.userName}</TableCell>
-                                  <TableCell className="text-sm italic">
-                                    {donation.purpose || (language === 'en' ? 'General' : 'പൊതുവായത്')}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono font-bold text-emerald-600">₹{donation.amount}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </CardContent>
                   </Card>
                 </div>
               </TabsContent>
-            </Tabs>
-          </div>
-        </section>
-        
+            )}
+          </Tabs>
+        </div>
+
         <PaymentDialog
-            isOpen={isPaymentDialogOpen}
-            onClose={() => setPaymentDialogOpen(false)}
-            record={activeRecord}
-            type={paymentType}
-            amount={paymentAmount}
-            onPaymentSuccess={handlePaymentSuccess}
+          isOpen={isPaymentDialogOpen}
+          onClose={() => setPaymentDialogOpen(false)}
+          record={activeRecord}
+          type={paymentType}
+          amount={paymentAmount}
+          onPaymentSuccess={handlePaymentSuccess}
         />
         
         <ConfirmationDialog 
-            isOpen={isConfirmationDialogOpen}
-            onClose={handleCloseAll}
-            record={activeRecord}
-            type={paymentType}
-            amount={paymentAmount}
+          isOpen={isConfirmationDialogOpen}
+          onClose={handleCloseAll}
+          record={activeRecord}
+          type={paymentType}
+          amount={paymentAmount}
         />
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }

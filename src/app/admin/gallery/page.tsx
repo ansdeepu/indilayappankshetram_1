@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
@@ -91,16 +91,17 @@ function GalleryItemEditor({ item, onUpdate, onRemove }: { item: GalleryItem, on
 
 export default function EditGalleryPage() {
   const router = useRouter();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const galleryQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || (!isAdmin && !isManager)) return null;
     return query(collection(firestore, 'gallery'), orderBy('order'));
-  }, [firestore]);
+  }, [firestore, isAdmin, isManager]);
   const { data: galleryItems, loading: galleryLoading } = useCollection<GalleryItem>(galleryQuery);
 
-  const pageContentRef = useMemo(() => firestore ? doc(firestore, 'content', 'galleryPage') : null, [firestore]);
+  const pageContentRef = useMemo(() => (firestore && (isAdmin || isManager)) ? doc(firestore, 'content', 'galleryPage') : null, [firestore, isAdmin, isManager]);
   const { data: pageContent, loading: contentLoading } = useDoc<GalleryPageContent>(pageContentRef);
 
   const [localItems, setLocalItems] = useState<GalleryItem[]>([]);
@@ -188,7 +189,10 @@ export default function EditGalleryPage() {
     }
   };
 
-  const isLoading = galleryLoading || contentLoading;
+  const isLoading = galleryLoading || contentLoading || userLoading;
+
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <div className="container mx-auto p-4">

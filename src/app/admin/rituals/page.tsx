@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
@@ -26,17 +26,18 @@ const defaultPageContent: RitualsPageContent = {
 
 export default function EditRitualsPage() {
   const router = useRouter();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const ritualsQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || (!isAdmin && !isManager)) return null;
     return query(collection(firestore, 'dailyRituals'), orderBy('time'));
-  }, [firestore]);
+  }, [firestore, isAdmin, isManager]);
 
   const { data: rituals, loading: ritualsLoading } = useCollection<Ritual>(ritualsQuery);
 
-  const pageContentRef = useMemo(() => firestore ? doc(firestore, 'content', 'ritualsPage') : null, [firestore]);
+  const pageContentRef = useMemo(() => (firestore && (isAdmin || isManager)) ? doc(firestore, 'content', 'ritualsPage') : null, [firestore, isAdmin, isManager]);
   const { data: pageContent, loading: pageContentLoading } = useDoc<RitualsPageContent>(pageContentRef);
 
   const [localRituals, setLocalRituals] = useState<Ritual[]>([]);
@@ -135,7 +136,10 @@ export default function EditRitualsPage() {
     }
   };
   
-  const isLoading = ritualsLoading || pageContentLoading;
+  const isLoading = ritualsLoading || pageContentLoading || userLoading;
+
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <div className="container mx-auto p-4">

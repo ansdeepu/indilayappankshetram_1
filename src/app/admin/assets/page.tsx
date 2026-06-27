@@ -87,9 +87,9 @@ export default function AdminAssetsPage() {
   const [editingAsset, setEditingAsset] = useState<TempleAsset | null>(null);
 
   const assetsQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || !isAdmin) return null;
     return query(collection(firestore, 'assets'), orderBy('categoryEn'));
-  }, [firestore]);
+  }, [firestore, isAdmin]);
 
   const { data: assetsList, loading: assetsLoading } = useCollection<TempleAsset>(assetsQuery);
 

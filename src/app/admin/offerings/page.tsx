@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
@@ -27,17 +27,18 @@ const defaultPageContent: VazhipaduPageContent = {
 
 export default function EditOfferingsPage() {
   const router = useRouter();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   // Fetch without ordering by slNo to ensure all documents are retrieved
   const offeringsQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || (!isAdmin && !isManager)) return null;
     return query(collection(firestore, 'offerings'));
-  }, [firestore]);
+  }, [firestore, isAdmin, isManager]);
   const { data: offerings, loading: offeringsLoading } = useCollection<Offering>(offeringsQuery);
 
-  const pageContentRef = useMemo(() => firestore ? doc(firestore, 'content', 'vazhipaduPage') : null, [firestore]);
+  const pageContentRef = useMemo(() => (firestore && (isAdmin || isManager)) ? doc(firestore, 'content', 'vazhipaduPage') : null, [firestore, isAdmin, isManager]);
   const { data: pageContent, loading: pageContentLoading } = useDoc<VazhipaduPageContent>(pageContentRef);
 
   const [localOfferings, setLocalOfferings] = useState<Offering[]>([]);
@@ -135,7 +136,10 @@ export default function EditOfferingsPage() {
     }
   };
 
-  const isLoading = offeringsLoading || pageContentLoading;
+  const isLoading = offeringsLoading || pageContentLoading || userLoading;
+
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <div className="container mx-auto p-4">

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,13 +24,14 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function ManageNews() {
   const router = useRouter();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const newsCollectionQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || (!isAdmin && !isManager)) return null;
     return query(collection(firestore, 'news'), orderBy('date', 'desc'));
-  }, [firestore]);
+  }, [firestore, isAdmin, isManager]);
   
   const { data: news, loading: newsLoading } = useCollection<NewsArticle>(newsCollectionQuery);
 
@@ -59,6 +60,8 @@ export default function ManageNews() {
     }
   };
 
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <>

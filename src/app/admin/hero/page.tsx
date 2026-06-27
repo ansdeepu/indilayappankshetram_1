@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, doc, setDoc, deleteDoc, orderBy, query } from 'firebase/firestore';
@@ -24,19 +24,20 @@ const defaultHeroContent: HeroContent = {
 
 export default function EditHeroPage() {
   const router = useRouter();
+  const { user, isAdmin, isManager, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const [slidesData, setSlidesData] = useState<HeroSlide[]>([]);
   const [contentData, setContentData] = useState<HeroContent>(defaultHeroContent);
 
-  const heroContentRef = useMemo(() => (firestore ? doc(firestore, 'heroContent', 'main') : null), [firestore]);
+  const heroContentRef = useMemo(() => ((firestore && (isAdmin || isManager)) ? doc(firestore, 'heroContent', 'main') : null), [firestore, isAdmin, isManager]);
   const { data: heroContent, loading: heroContentLoading } = useDoc<HeroContent>(heroContentRef);
 
   const heroCollectionQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (!firestore || (!isAdmin && !isManager)) return null;
     return query(collection(firestore, 'heroSlides'), orderBy('order'));
-  }, [firestore]);
+  }, [firestore, isAdmin, isManager]);
 
   const { data: heroSlides, loading: heroSlidesLoading } = useCollection<HeroSlide>(heroCollectionQuery);
   
@@ -126,7 +127,10 @@ export default function EditHeroPage() {
     }
   };
 
-  const isLoading = heroSlidesLoading || heroContentLoading;
+  const isLoading = heroSlidesLoading || heroContentLoading || userLoading;
+
+  if (userLoading) return null;
+  if (!isAdmin && !isManager) return <div className="container py-20 text-center">Unauthorized Access</div>;
 
   return (
     <div className="container mx-auto p-4">

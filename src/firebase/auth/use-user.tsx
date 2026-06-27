@@ -9,6 +9,7 @@ export interface UserState {
   loading: boolean;
   isAdmin: boolean;
   isManager: boolean;
+  canManage: boolean;
 }
 
 export function useUser(): UserState {
@@ -18,21 +19,22 @@ export function useUser(): UserState {
     loading: true,
     isAdmin: false,
     isManager: false,
+    canManage: false,
   });
 
   useEffect(() => {
     if (!auth) {
-      setUserState({ user: null, loading: false, isAdmin: false, isManager: false });
+      setUserState({ user: null, loading: false, isAdmin: false, isManager: false, canManage: false });
       return;
     }
 
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
       if (!user || !user.email) {
-        setUserState({ user: null, loading: false, isAdmin: false, isManager: false });
+        setUserState({ user: null, loading: false, isAdmin: false, isManager: false, canManage: false });
         return;
       }
       
-      const isAdmin = user.email === 'indilayappankshetram@gmail.com' || user.email === 'ss.deepu@gmail.com';
+      const isAdmin = user.email === 'indilayappankshetram@gmail.com';
       const isManager = user.email === 'templemanager@gmail.com';
 
       setUserState({
@@ -40,6 +42,7 @@ export function useUser(): UserState {
         loading: false,
         isAdmin: isAdmin,
         isManager: isManager,
+        canManage: isAdmin || isManager,
       });
     });
 

@@ -7,7 +7,6 @@ import {
   DocumentReference,
   DocumentData,
 } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from './error-handler';
 
 export function useDoc<T>(ref: DocumentReference<T, DocumentData> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -32,10 +31,14 @@ export function useDoc<T>(ref: DocumentReference<T, DocumentData> | null) {
         setLoading(false);
       },
       (err) => {
-        console.error("Error in useDoc:", err?.message || String(err));
+        let path = 'unknown';
+        try {
+          path = ref?.path || 'unknown';
+        } catch (e) {}
+        
+        console.error(`Error in useDoc [${path}]:`, err?.message || String(err));
         setError(err?.message || String(err));
         setLoading(false);
-        handleFirestoreError(err, OperationType.GET, ref?.path || 'unknown');
       }
     );
 
