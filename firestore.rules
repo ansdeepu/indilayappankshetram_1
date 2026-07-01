@@ -128,6 +128,12 @@ service cloud.firestore {
       allow write: if canManage();
     }
 
+    // Rules for finance categories
+    match /financeCategories/{categoryId} {
+      allow read: if true;
+      allow write: if canManage();
+    }
+
     // By default, deny all other reads and writes
     match /{document=**} {
       allow read, write: if false;

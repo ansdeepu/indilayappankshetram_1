@@ -43,7 +43,7 @@ export function VisitorCounter() {
            }
         }
       } catch (error: any) {
-        console.error("Error updating visitor count: ", error?.message || String(error));
+        console.warn("Error updating visitor count: ", error?.message || String(error));
       }
     };
 

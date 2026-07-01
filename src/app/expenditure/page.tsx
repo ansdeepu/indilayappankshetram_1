@@ -89,7 +89,7 @@ import {
   ArrowDownCircle,
 } from 'lucide-react';
 import { Expenditure } from '@/lib/types';
-import { EXPENDITURE_CATEGORIES } from '@/lib/finance-categories';
+import { useFinanceCategories } from '@/hooks/use-finance-categories';
 
 export default function ExpenditurePage() {
   const { toast } = useToast();
@@ -97,6 +97,7 @@ export default function ExpenditurePage() {
   const firestore = useFirestore();
   const { user, loading: authLoading, isAdmin, isManager } = useUser();
   const canManage = isAdmin || isManager;
+  const { expenditureCategories } = useFinanceCategories();
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -136,14 +137,14 @@ export default function ExpenditurePage() {
   });
 
   const selectedCatId = form.watch('categoryId');
-  const selectedCategory = EXPENDITURE_CATEGORIES.find(c => c.id === selectedCatId);
+  const selectedCategory = expenditureCategories.find(c => c.id === selectedCatId);
 
   // Handle new expenditure submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore || !canManage) return;
 
     try {
-      const cat = EXPENDITURE_CATEGORIES.find(c => c.id === values.categoryId);
+      const cat = expenditureCategories.find(c => c.id === values.categoryId);
       if (!cat) throw new Error('Invalid category');
       
       const subCat = cat.subcategories[parseInt(values.subCategoryIndex)];
@@ -372,7 +373,7 @@ export default function ExpenditurePage() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {EXPENDITURE_CATEGORIES.map((cat) => (
+                                      {expenditureCategories.map((cat) => (
                                         <SelectItem key={cat.id} value={cat.id}>
                                           {language === 'en' ? cat.nameEn : cat.nameMl}
                                         </SelectItem>
@@ -593,7 +594,7 @@ export default function ExpenditurePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      {EXPENDITURE_CATEGORIES.map(cat => (
+                      {expenditureCategories.map(cat => (
                         <SelectItem key={cat.id} value={cat.nameEn}>{language === 'en' ? cat.nameEn : cat.nameMl}</SelectItem>
                       ))}
                     </SelectContent>

@@ -56,7 +56,7 @@ import { LoginDialog } from '@/components/auth/login-dialog';
 import { ShieldAlert, Loader2, Calendar, Clock, Heart, PlusCircle, List, TrendingUp, Trash2, Flame } from 'lucide-react';
 import { motion } from 'motion/react';
 import { format, addDays } from 'date-fns';
-import { INCOME_CATEGORIES } from '@/lib/finance-categories';
+import { useFinanceCategories } from '@/hooks/use-finance-categories';
 
 export default function IncomePage() {
   const { toast } = useToast();
@@ -65,6 +65,7 @@ export default function IncomePage() {
   const router = useRouter();
   const { user, loading: authLoading, isAdmin, isManager } = useUser();
   const canManage = isAdmin || isManager;
+  const { incomeCategories } = useFinanceCategories();
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isConfirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
@@ -188,7 +189,7 @@ export default function IncomePage() {
   });
 
   const selectedManualCatId = manualForm.watch('categoryId');
-  const selectedManualCategory = INCOME_CATEGORIES.find(c => c.id === selectedManualCatId);
+  const selectedManualCategory = incomeCategories.find(c => c.id === selectedManualCatId);
 
   // Submissions
   async function onOfferingSubmit(values: z.infer<typeof todayFormSchema>) {
@@ -279,7 +280,7 @@ export default function IncomePage() {
     if (!firestore || !canManage) return;
 
     try {
-      const cat = INCOME_CATEGORIES.find(c => c.id === values.categoryId);
+      const cat = incomeCategories.find(c => c.id === values.categoryId);
       const subCat = cat?.subcategories[parseInt(values.subCategoryIndex)];
 
       if (!cat || !subCat) throw new Error('Invalid category');
@@ -667,7 +668,7 @@ export default function IncomePage() {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {INCOME_CATEGORIES.map(cat => (
+                                    {incomeCategories.map(cat => (
                                       <SelectItem key={cat.id} value={cat.id}>{language === 'en' ? cat.nameEn : cat.nameMl}</SelectItem>
                                     ))}
                                   </SelectContent>
